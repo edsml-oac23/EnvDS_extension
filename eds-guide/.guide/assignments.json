@@ -1,0 +1,15 @@
+{
+  "title": "Module Assignments",
+  "assignments": [
+    {
+      "title": "Assignment 1: Spatial Analysis",
+      "description": "Complete the practical and answer the review questions.",
+      "notebook": "notebooks/practical_to_spatialanalysis.ipynb"
+    },
+    {
+      "title": "Assignment 2: GEE & OSM",
+      "description": "Find and analyze a new dataset using GEE.",
+      "notebook": "notebooks/tutorial_GEE_OSM.ipynb"
+    }
+  ]
+}

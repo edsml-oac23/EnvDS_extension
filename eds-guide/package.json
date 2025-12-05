@@ -1,0 +1,75 @@
+{
+  "name": "eds-guide",
+  "publisher": "EnvDataScience",
+  "files": [
+    "dist",
+    ".guide",
+    "resources"
+  ],
+  "displayName": "Environmental Data Science Module",
+  "description": "Provides practicals, tutorials and notebooks for the Environmental Data Science module at Imperial College London",
+  "version": "0.0.2",
+  "engines": {
+    "vscode": "^1.105.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "eds-guide-sidebar",
+          "title": "EDS Guide",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "eds-guide-sidebar": [
+        {
+          "id": "eds-guide.courseOutlineView",
+          "name": "Course Outline",
+          "type": "tree"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "eds-guide.openSection",
+        "title": "Open Guide Section"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.105.0",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.36.0",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "webpack": "^5.102.0",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "markdown-it": "^14.1.0"
+  }
+}

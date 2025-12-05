@@ -1,0 +1,21 @@
+{
+  "title": "Imperial EDSM Practicals",
+  "categories": [
+    {
+      "title": "Module 1: Spatial Analysis",
+      "description": "Introduction to vector and raster data.",
+      "steps": [
+        {
+          "title": "1. Intro to Spatial Analysis",
+          "description": "Learn the basics of Geopandas and Rasterio.",
+          "file": ".guide/01-intro-spatial.md"
+        },
+        {
+          "title": "2. GEE & OSM Tutorial",
+          "description": "Using Google Earth Engine.",
+          "file": ".guide/02-gee-osm.md"
+        }
+      ]
+    }
+  ]
+}
