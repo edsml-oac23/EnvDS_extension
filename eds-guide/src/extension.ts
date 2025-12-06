@@ -241,6 +241,18 @@ class SectionWebviewPanel {
     const nonce = getNonce();
     let markdownContent = '';
     let notebookButton = '';
+
+    let depsButton = '';
+// Only show this for the 1.1 setup page (you can also check an id if you prefer)
+if (section.title === "1.1 Preparing your environment") {
+    depsButton = `
+      <button class="open-notebook-btn" id="check-deps-btn">
+          Check dependencies
+      </button>
+    `;
+}
+
+
     
     // Check if it's a practical (has 'file') or an assignment (no 'file')
     if (section.file) {
@@ -276,68 +288,105 @@ class SectionWebviewPanel {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>${section.title}</title>
           <style>
-              body { 
-    /* This is the explicit font stack VS Code uses for its UI */
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-weight: normal;
+      font-size: 13px;         /* was 10px */
+      line-height: 1.6;
+      padding: 24px;
+      color: var(--vscode-editor-foreground);
+      background-color: var(--vscode-editor-background);
+  }
 
-    /* We set a default size and weight */
-    font-weight: normal;
-    font-size: 10px;
+  h1 {
+      font-size: 1.6em;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--vscode-textLink-foreground);
+      border-bottom: 1px solid var(--vscode-separator-foreground);
+      padding-bottom: 8px;
+  }
 
-    padding: 20px; 
-    color: var(--vscode-editor-foreground);
-    background-color: var(--vscode-editor-background);
-}
-              h1 { 
-                  color: var(--vscode-textLink-foreground);
-                  border-bottom: 1px solid var(--vscode-separator-foreground);
-                  padding-bottom: 10px;
-              }
-              .open-notebook-btn {
-                  background-color: var(--vscode-button-background);
-                  color: var(--vscode-button-foreground);
-                  border: none;
-                  padding: 10px 15px;
-                  border-radius: 4px;
-                  cursor: pointer;
-                  font-weight: bold;
-                  font-size: 1.1em;
-                  margin: 10px 0 20px 0;
-              }
-              .open-notebook-btn:hover {
-                  background-color: var(--vscode-button-hoverBackground);
-              }
-              code {
-                  background-color: var(--vscode-textBlockQuote-background);
-                  padding: 2px 4px;
-                  border-radius: 3px;
-              }
-              pre {
-                  background-color: var(--vscode-textBlockQuote-background);
-                  padding: 10px;
-                  border-radius: 4px;
-              }
-          </style>
+  h2 {
+      font-size: 1.3em;
+      font-weight: 600;
+      margin-top: 20px;
+      margin-bottom: 8px;
+  }
+
+  p {
+      margin: 8px 0;
+  }
+
+  ul, ol {
+      margin-left: 20px;
+  }
+
+  .open-notebook-btn {
+      background-color: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border: none;
+      padding: 10px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin: 0 0 20px 0;
+  }
+
+  .open-notebook-btn:hover {
+      background-color: var(--vscode-button-hoverBackground);
+  }
+
+  code {
+      background-color: var(--vscode-textBlockQuote-background);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+
+  pre {
+      background-color: var(--vscode-textBlockQuote-background);
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+  }
+</style>
+
       </head>
       <body>
           <h1>${section.title}</h1>
+          ${depsButton}
           ${notebookButton}
           <hr>
           ${markdownContent} 
 
           <script nonce="${nonce}">
-              const vscode = acquireVsCodeApi();
-              const button = document.querySelector('.open-notebook-btn');
-              if (button) {
-                  button.addEventListener('click', () => {
-                      const notebookPath = button.getAttribute('data-notebook');
-                      vscode.postMessage({
-                          command: 'openNotebook',
-                          notebook: notebookPath
-                      });
-                  });
-              }
-          </script>
+    const vscode = acquireVsCodeApi();
+
+    // Check Dependencies button
+    const depsBtn = document.getElementById('check-deps-btn');
+    if (depsBtn) {
+        depsBtn.addEventListener('click', () => {
+            vscode.postMessage({
+                command: 'checkDependencies'
+            });
+        });
+    }
+
+    // Open Notebook button
+    const nbBtn = document.querySelector('.open-notebook-btn[data-notebook]');
+    if (nbBtn) {
+        nbBtn.addEventListener('click', () => {
+            const notebookPath = nbBtn.getAttribute('data-notebook');
+            vscode.postMessage({
+                command: 'openNotebook',
+                notebook: notebookPath
+            });
+        });
+    }
+</script>
+
       </body>
       </html>`;
   }
