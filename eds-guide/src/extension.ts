@@ -65,60 +65,73 @@ class CourseOutlineProvider implements vscode.TreeDataProvider<vscode.TreeItem> 
 
     // If we are under "Practicals", read toc.json
     if (element.id === "practicals") {
-      const tocPath = path.join(this.extensionPath, '.guide', 'toc.json');
-      const toc = JSON.parse(fs.readFileSync(tocPath, 'utf8'));
-      
-      let practicalSections: SectionItem[] = [];
-      toc.categories.forEach((category: any) => {
-        // Add the category as a collapsible item
-        const categoryItem = new SectionItem(
-          category.title,
-          category.description,
-          vscode.TreeItemCollapsibleState.Expanded,
-          category.title
-        );
-        practicalSections.push(categoryItem);
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    vscode.window.showErrorMessage("EDS Guide: No workspace folder found.");
+    return Promise.resolve([]);
+  }
 
-        // Add the steps under the category
-        category.steps.forEach((step: any) => {
-          const stepItem = new SectionItem(
-            step.title,
-            step.description,
-            vscode.TreeItemCollapsibleState.None, // This item is not collapsible
-            step.title
-          );
-          // This is the command that will be run when the item is clicked
-          stepItem.command = {
-            command: 'eds-guide.openSection',
-            title: 'Open Guide Section',
-            arguments: [step], // Pass the 'step' object to our command
-          };
-          practicalSections.push(stepItem);
-        });
-      });
-      return Promise.resolve(practicalSections);
-    }
+  const workspaceRoot = workspaceFolders[0].uri.fsPath;
+  const tocPath = path.join(workspaceRoot, '.guide', 'toc.json');
+  const toc = JSON.parse(fs.readFileSync(tocPath, 'utf8'));
+
+  let practicalSections: SectionItem[] = [];
+  toc.categories.forEach((category: any) => {
+    const categoryItem = new SectionItem(
+      category.title,
+      category.description,
+      vscode.TreeItemCollapsibleState.Expanded,
+      category.title
+    );
+    practicalSections.push(categoryItem);
+
+    category.steps.forEach((step: any) => {
+      const stepItem = new SectionItem(
+        step.title,
+        step.description,
+        vscode.TreeItemCollapsibleState.None,
+        step.title
+      );
+      stepItem.command = {
+        command: 'eds-guide.openSection',
+        title: 'Open Guide Section',
+        arguments: [step],
+      };
+      practicalSections.push(stepItem);
+    });
+  });
+  return Promise.resolve(practicalSections);
+}
+
 
     // If we are under "Assignments", read assignments.json
     if (element.id === "assignments") {
-      const assignPath = path.join(this.extensionPath, '.guide', 'assignments.json');
-      const assignments = JSON.parse(fs.readFileSync(assignPath, 'utf8'));
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    vscode.window.showErrorMessage("EDS Guide: No workspace folder found.");
+    return Promise.resolve([]);
+  }
 
-      const assignmentSections = assignments.assignments.map((assign: any) => {
-        const assignItem = new SectionItem(
-          assign.title,
-          assign.description,
-          vscode.TreeItemCollapsibleState.None
-        );
-        assignItem.command = {
-          command: 'eds-guide.openSection',
-          title: 'Open Guide Section',
-          arguments: [assign], // Pass the 'assign' object to our command
-        };
-        return assignItem;
-      });
-      return Promise.resolve(assignmentSections);
-    }
+  const workspaceRoot = workspaceFolders[0].uri.fsPath;
+  const assignPath = path.join(workspaceRoot, '.guide', 'assignments.json');
+  const assignments = JSON.parse(fs.readFileSync(assignPath, 'utf8'));
+
+  const assignmentSections = assignments.assignments.map((assign: any) => {
+    const assignItem = new SectionItem(
+      assign.title,
+      assign.description,
+      vscode.TreeItemCollapsibleState.None
+    );
+    assignItem.command = {
+      command: 'eds-guide.openSection',
+      title: 'Open Guide Section',
+      arguments: [assign],
+    };
+    return assignItem;
+  });
+  return Promise.resolve(assignmentSections);
+}
+
 
     return Promise.resolve([]);
   }
@@ -231,14 +244,20 @@ class SectionWebviewPanel {
     
     // Check if it's a practical (has 'file') or an assignment (no 'file')
     if (section.file) {
-      // It's a practical, so read the .md file
-      const mdPath = path.join(this._extensionPath, section.file);
-      markdownContent = fs.readFileSync(mdPath, 'utf8');
-      markdownContent = md.render(markdownContent); // Convert markdown to HTML
-    } else {
-      // It's an assignment, so just show the description
-      markdownContent = `<p>${section.description}</p>`;
-    }
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    vscode.window.showErrorMessage("EDS Guide: No workspace folder found.");
+    markdownContent = "<p>No workspace folder found.</p>";
+  } else {
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    const mdPath = path.join(workspaceRoot, section.file); // e.g. ".guide/week1/1.1-setup.md"
+    markdownContent = fs.readFileSync(mdPath, 'utf8');
+    markdownContent = md.render(markdownContent);
+  }
+} else {
+  markdownContent = `<p>${section.description}</p>`;
+}
+
     
     // If a notebook path is provided, add the button
     if (section.notebook) {
