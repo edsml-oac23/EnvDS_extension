@@ -4,18 +4,21 @@
   "files": [
     "dist",
     ".guide",
-    "resources"
+    "resources",
+    "src/webview"            
   ],
   "displayName": "Environmental Data Science Module",
   "description": "Provides practicals, tutorials and notebooks for the Environmental Data Science module at Imperial College London",
-  "version": "0.0.9",
+  "version": "0.0.11",
   "engines": {
     "vscode": "^1.105.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:eds-guide.courseOutlineView"    
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -31,8 +34,9 @@
       "eds-guide-sidebar": [
         {
           "id": "eds-guide.courseOutlineView",
-          "name": "Course Outline",
-          "type": "tree"
+          "name": "Environmental Data Science Guide",
+          "type": "webview",                   
+          "initialSize": 2
         }
       ]
     },
@@ -41,14 +45,15 @@
         "command": "eds-guide.openSection",
         "title": "Open Guide Section"
       },
-
       {
         "command": "eds-guide.checkDependencies",
-      "title": "EDS: Check Dependencies",
-      "category": "EDSML"
-
+        "title": "Check Dependencies"
+      },
+      {
+        "command": "eds-guide.refreshGuide",
+        "title": "Refresh Guide",
+        "icon": "$(refresh)"
       }
-
     ]
   },
   "scripts": {
