@@ -8,7 +8,7 @@
   ],
   "displayName": "Environmental Data Science Module",
   "description": "Provides practicals, tutorials and notebooks for the Environmental Data Science module at Imperial College London",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "engines": {
     "vscode": "^1.105.0"
   },
