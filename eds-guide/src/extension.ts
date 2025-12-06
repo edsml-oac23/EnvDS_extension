@@ -19,7 +19,26 @@ export function activate(context: vscode.ExtensionContext) {
       SectionWebviewPanel.createOrShow(context.extensionUri, context.extensionPath, section);
     })
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('eds-guide.checkDependencies', () => {
+      const terminalName = 'EDSML Setup';
+      let terminal = vscode.window.terminals.find(t => t.name === terminalName);
+
+      if (!terminal) {
+        terminal = vscode.window.createTerminal(terminalName);
+      }
+
+      terminal.show();
+      terminal.sendText("echo 'EDSML: Synchronising geospatial environment with uv...'");
+      terminal.sendText("uv sync");
+      terminal.sendText(
+        "uv run python -c \"import geopandas, xarray, rioxarray, leafmap; print(' OpenGeos / GIS stack ready')\""
+      );
+    })
+  );
 }
+  
 
 //##############################################################################
 // 1. THE NAVIGATION LIST (TreeDataProvider)
@@ -170,11 +189,16 @@ class SectionWebviewPanel {
       async (message) => {
         if (message.command === 'openNotebook') {
           this._openNotebook(message.notebook);
+
+        } else if (message.command === 'checkDependencies') {
+          // 🔵 This is exactly where you use the command:
+          await vscode.commands.executeCommand('eds-guide.checkDependencies');
         }
       },
       null,
       this._disposables
-    );
+  );
+
   }
   
   // This updates the content of the tab

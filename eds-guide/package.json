@@ -8,7 +8,7 @@
   ],
   "displayName": "Environmental Data Science Module",
   "description": "Provides practicals, tutorials and notebooks for the Environmental Data Science module at Imperial College London",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.105.0"
   },
@@ -40,7 +40,15 @@
       {
         "command": "eds-guide.openSection",
         "title": "Open Guide Section"
+      },
+
+      {
+        "command": "eds-guide.checkDependencies",
+      "title": "EDS: Check Dependencies",
+      "category": "EDSML"
+
       }
+
     ]
   },
   "scripts": {
