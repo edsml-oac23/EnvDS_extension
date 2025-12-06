@@ -1,13 +1,15 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-const MarkdownIt = require('markdown-it'); // Use the 'require' import
+const MarkdownIt = require('markdown-it');
 
 // This function is called when your extension is first activated
 export function activate(context: vscode.ExtensionContext) {
   
   // Create a new TreeDataProvider and register it
+  // We pass extensionPath to load local resources if needed
   const courseOutlineProvider = new CourseOutlineProvider(context.extensionPath);
+  
   vscode.window.registerTreeDataProvider(
     'eds-guide.courseOutlineView',
     courseOutlineProvider
@@ -20,6 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // Register the "Check Dependencies" command (The logic for the Blue Button)
   context.subscriptions.push(
     vscode.commands.registerCommand('eds-guide.checkDependencies', () => {
       const terminalName = 'EDSML Setup';
@@ -33,7 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
       terminal.sendText("echo 'EDSML: Synchronising geospatial environment with uv...'");
       terminal.sendText("uv sync");
       terminal.sendText(
-        "uv run python -c \"import geopandas, xarray, rioxarray, leafmap; print(' OpenGeos / GIS stack ready')\""
+        "uv run python -c \"import geopandas, xarray, rioxarray, leafmap; print('✅ OpenGeos Stack Ready!')\""
       );
     })
   );
@@ -42,20 +45,26 @@ export function activate(context: vscode.ExtensionContext) {
 
 //##############################################################################
 // 1. THE NAVIGATION LIST (TreeDataProvider)
-// This class reads your JSON files and builds the sidebar list
+// Reads toc.json from the Student Workspace
 //##############################################################################
 class CourseOutlineProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
   constructor(private extensionPath: string) {}
 
-  // This is required, but we don't need it
   getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
     return element;
   }
 
-  // This is the main function that builds the tree
   getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
     
-    // If we are at the top level, return the main categories
+    // 1. Get the path to the Student's Open Folder (Workspace)
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+        return Promise.resolve([]); // No folder open
+    }
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+
+
+    // 2. Top Level Categories
     if (!element) {
       return Promise.resolve([
         new SectionItem("Module Practicals", "A list of all course practicals", vscode.TreeItemCollapsibleState.Expanded, "practicals"),
@@ -63,97 +72,90 @@ class CourseOutlineProvider implements vscode.TreeDataProvider<vscode.TreeItem> 
       ]);
     }
 
-    // If we are under "Practicals", read toc.json
+    // 3. Practicals Section
     if (element.id === "practicals") {
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  if (!workspaceFolders || workspaceFolders.length === 0) {
-    vscode.window.showErrorMessage("EDS Guide: No workspace folder found.");
-    return Promise.resolve([]);
-  }
+      const tocPath = path.join(workspaceRoot, '.guide', 'toc.json');
+      
+      if (!fs.existsSync(tocPath)) {
+          vscode.window.showErrorMessage("EDSML: Could not find .guide/toc.json in this workspace.");
+          return Promise.resolve([]);
+      }
 
-  const workspaceRoot = workspaceFolders[0].uri.fsPath;
-  const tocPath = path.join(workspaceRoot, '.guide', 'toc.json');
-  const toc = JSON.parse(fs.readFileSync(tocPath, 'utf8'));
+      const toc = JSON.parse(fs.readFileSync(tocPath, 'utf8'));
+      
+      let practicalSections: SectionItem[] = [];
+      toc.categories.forEach((category: any) => {
+        const categoryItem = new SectionItem(
+          category.title,
+          category.description,
+          vscode.TreeItemCollapsibleState.Expanded,
+          category.title
+        );
+        practicalSections.push(categoryItem);
 
-  let practicalSections: SectionItem[] = [];
-  toc.categories.forEach((category: any) => {
-    const categoryItem = new SectionItem(
-      category.title,
-      category.description,
-      vscode.TreeItemCollapsibleState.Expanded,
-      category.title
-    );
-    practicalSections.push(categoryItem);
+        category.steps.forEach((step: any) => {
+          const stepItem = new SectionItem(
+            step.title,
+            step.description,
+            vscode.TreeItemCollapsibleState.None, 
+            step.title
+          );
+          
+          // 🔴 CRITICAL UPDATE: Passing 'categoryTitle' to the command
+          // This allows us to display "WEEK 1" in the webview header
+          stepItem.command = {
+            command: 'eds-guide.openSection',
+            title: 'Open Guide Section',
+            arguments: [{ ...step, categoryTitle: category.title }], 
+          };
+          practicalSections.push(stepItem);
+        });
+      });
+      return Promise.resolve(practicalSections);
+    }
 
-    category.steps.forEach((step: any) => {
-      const stepItem = new SectionItem(
-        step.title,
-        step.description,
-        vscode.TreeItemCollapsibleState.None,
-        step.title
-      );
-      stepItem.command = {
-        command: 'eds-guide.openSection',
-        title: 'Open Guide Section',
-        arguments: [step],
-      };
-      practicalSections.push(stepItem);
-    });
-  });
-  return Promise.resolve(practicalSections);
-}
-
-
-    // If we are under "Assignments", read assignments.json
+    // 4. Assignments Section
     if (element.id === "assignments") {
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  if (!workspaceFolders || workspaceFolders.length === 0) {
-    vscode.window.showErrorMessage("EDS Guide: No workspace folder found.");
-    return Promise.resolve([]);
-  }
-
-  const workspaceRoot = workspaceFolders[0].uri.fsPath;
-  const assignPath = path.join(workspaceRoot, '.guide', 'assignments.json');
-  const assignments = JSON.parse(fs.readFileSync(assignPath, 'utf8'));
-
-  const assignmentSections = assignments.assignments.map((assign: any) => {
-    const assignItem = new SectionItem(
-      assign.title,
-      assign.description,
-      vscode.TreeItemCollapsibleState.None
-    );
-    assignItem.command = {
-      command: 'eds-guide.openSection',
-      title: 'Open Guide Section',
-      arguments: [assign],
-    };
-    return assignItem;
-  });
-  return Promise.resolve(assignmentSections);
-}
-
+      const assignPath = path.join(workspaceRoot, '.guide', 'assignments.json');
+      
+      if (fs.existsSync(assignPath)) {
+        const assignments = JSON.parse(fs.readFileSync(assignPath, 'utf8'));
+        const assignmentSections = assignments.assignments.map((assign: any) => {
+            const assignItem = new SectionItem(
+              assign.title,
+              assign.description,
+              vscode.TreeItemCollapsibleState.None
+            );
+            assignItem.command = {
+              command: 'eds-guide.openSection',
+              title: 'Open Guide Section',
+              arguments: [assign], 
+            };
+            return assignItem;
+        });
+        return Promise.resolve(assignmentSections);
+      }
+    }
 
     return Promise.resolve([]);
   }
 }
 
-// A helper class to define our TreeItems
 class SectionItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
-    description: string, // <-- PROBLEM SOLVED
+    description: string, 
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly id?: string
   ) {
     super(label, collapsibleState);
     this.tooltip = `${this.label} - ${description}`;
-    this.description = description; // This now correctly sets the public property
+    this.description = description; 
   }
 }
 
 //##############################################################################
 // 2. THE MAIN EDITOR TAB (WebviewPanel)
-// This class creates the "Building Machine Learning Systems" tab
 //##############################################################################
 class SectionWebviewPanel {
   public static currentPanel: SectionWebviewPanel | undefined;
@@ -165,21 +167,19 @@ class SectionWebviewPanel {
   private _disposables: vscode.Disposable[] = [];
 
   public static createOrShow(extensionUri: vscode.Uri, extensionPath: string, section: any) {
-    // If we already have a panel, show it.
     if (SectionWebviewPanel.currentPanel) {
       SectionWebviewPanel.currentPanel._panel.reveal(vscode.ViewColumn.One);
       SectionWebviewPanel.currentPanel._update(section);
       return;
     }
 
-    // Otherwise, create a new panel.
     const panel = vscode.window.createWebviewPanel(
       SectionWebviewPanel.viewType,
-      `Guide: ${section.title}`, // This is the tab title
+      `Guide: ${section.title}`,
       vscode.ViewColumn.One,
       {
         enableScripts: true,
-        localResourceRoots: [extensionUri],
+        localResourceRoots: [extensionUri], 
       }
     );
 
@@ -191,20 +191,16 @@ class SectionWebviewPanel {
     this._extensionUri = extensionUri;
     this._extensionPath = extensionPath;
 
-    // Set the webview's initial content
     this._update(section);
 
-    // Listen for when the panel is closed
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
-    // Handle messages from the webview (e.g., button clicks)
     this._panel.webview.onDidReceiveMessage(
       async (message) => {
         if (message.command === 'openNotebook') {
           this._openNotebook(message.notebook);
 
         } else if (message.command === 'checkDependencies') {
-          // 🔵 This is exactly where you use the command:
           await vscode.commands.executeCommand('eds-guide.checkDependencies');
         }
       },
@@ -214,14 +210,12 @@ class SectionWebviewPanel {
 
   }
   
-  // This updates the content of the tab
   private _update(section: any) {
     const webview = this._panel.webview;
     this._panel.title = `Guide: ${section.title}`;
     this._panel.webview.html = this._getHtmlForWebview(webview, section);
   }
   
-  // Helper function to open a notebook
   private async _openNotebook(notebookPath: string) {
     if (vscode.workspace.workspaceFolders) {
       const rootUri = vscode.workspace.workspaceFolders[0].uri;
@@ -235,49 +229,57 @@ class SectionWebviewPanel {
     }
   }
 
-  // This generates the HTML for the main editor tab
+  // 🔴 CRITICAL UPDATE: New Layout and CSS
   private _getHtmlForWebview(webview: vscode.Webview, section: any) {
     const md = new MarkdownIt();
     const nonce = getNonce();
     let markdownContent = '';
     let notebookButton = '';
-
     let depsButton = '';
-// Only show this for the 1.1 setup page (you can also check an id if you prefer)
-if (section.title === "1.1 Preparing your environment") {
-    depsButton = `
-      <button class="open-notebook-btn" id="check-deps-btn">
-          Check dependencies
-      </button>
-    `;
-}
-
-
     
-    // Check if it's a practical (has 'file') or an assignment (no 'file')
-    if (section.file) {
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  if (!workspaceFolders || workspaceFolders.length === 0) {
-    vscode.window.showErrorMessage("EDS Guide: No workspace folder found.");
-    markdownContent = "<p>No workspace folder found.</p>";
-  } else {
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const mdPath = path.join(workspaceRoot, section.file); // e.g. ".guide/week1/1.1-setup.md"
-    markdownContent = fs.readFileSync(mdPath, 'utf8');
-    markdownContent = md.render(markdownContent);
-  }
-} else {
-  markdownContent = `<p>${section.description}</p>`;
-}
+    // 1. EXTRACT TITLES
+    // If we passed the categoryTitle, use it. Otherwise default.
+    const eyebrow = section.categoryTitle ? section.categoryTitle.toUpperCase() : "ENVIRONMENTAL DATA SCIENCE";
+    const title = section.title;
 
-    
-    // If a notebook path is provided, add the button
-    if (section.notebook) {
-      notebookButton = `
-        <button class="open-notebook-btn" data-notebook="${section.notebook}">
-            Open Notebook/Practical
+    // 2. GENERATE CHECK DEPENDENCIES BUTTON (Only for Setup)
+    if (title.includes("Preparing your environment") || title.includes("1.1")) {
+      depsButton = `
+        <button class="action-btn deps-btn" id="check-deps-btn">
+             <span class="icon">⚡</span> 
+             <span>Check Environment Dependencies</span>
         </button>
       `;
+    }
+
+    // 3. GENERATE OPEN NOTEBOOK BUTTON
+    if (section.notebook) {
+      notebookButton = `
+        <button class="action-btn notebook-btn" data-notebook="${section.notebook}">
+            <span class="icon">📘</span>
+            <span>Open Practical Notebook</span>
+        </button>
+      `;
+    }
+
+    // 4. GENERATE MARKDOWN CONTENT
+    if (section.file) {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders || workspaceFolders.length === 0) {
+        markdownContent = "<p>No workspace folder found.</p>";
+      } else {
+        const workspaceRoot = workspaceFolders[0].uri.fsPath;
+        const mdPath = path.join(workspaceRoot, section.file);
+        
+        if (fs.existsSync(mdPath)) {
+            markdownContent = fs.readFileSync(mdPath, 'utf8');
+            markdownContent = md.render(markdownContent);
+        } else {
+            markdownContent = `<p style="color:red">File not found: ${mdPath}</p>`;
+        }
+      }
+    } else {
+      markdownContent = `<p>${section.description}</p>`;
     }
 
     return `<!DOCTYPE html>
@@ -286,107 +288,147 @@ if (section.title === "1.1 Preparing your environment") {
           <meta charset="UTF-8">
           <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${section.title}</title>
+          <title>${title}</title>
           <style>
-  body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      font-weight: normal;
-      font-size: 13px;         /* was 10px */
-      line-height: 1.6;
-      padding: 24px;
-      color: var(--vscode-editor-foreground);
-      background-color: var(--vscode-editor-background);
-  }
+              :root {
+                  --container-paddding: 20px;
+              }
 
-  h1 {
-      font-size: 1.6em;
-      font-weight: 600;
-      margin-bottom: 12px;
-      color: var(--vscode-textLink-foreground);
-      border-bottom: 1px solid var(--vscode-separator-foreground);
-      padding-bottom: 8px;
-  }
+              body {
+                  font-family: var(--vscode-font-family, "Segoe UI", "Helvetica Neue", sans-serif);
+                  font-size: 15px;
+                  line-height: 1.6;
+                  color: var(--vscode-editor-foreground);
+                  background-color: var(--vscode-editor-background);
+                  padding: 40px;
+                  max-width: 800px;
+                  margin: 0 auto;
+              }
 
-  h2 {
-      font-size: 1.3em;
-      font-weight: 600;
-      margin-top: 20px;
-      margin-bottom: 8px;
-  }
+              /* --- TYPOGRAPHY --- */
+              .eyebrow {
+                  font-size: 0.85em;
+                  font-weight: 600;
+                  letter-spacing: 1px;
+                  color: var(--vscode-descriptionForeground);
+                  margin-bottom: 5px;
+                  text-transform: uppercase;
+              }
 
-  p {
-      margin: 8px 0;
-  }
+              h1 {
+                  font-size: 2.2em;
+                  font-weight: 700;
+                  margin-top: 0;
+                  margin-bottom: 25px;
+                  color: var(--vscode-editor-foreground);
+                  border: none;
+              }
 
-  ul, ol {
-      margin-left: 20px;
-  }
+              h2 { margin-top: 30px; font-weight: 600; border-bottom: 1px solid var(--vscode-widget-border); padding-bottom: 5px;}
+              h3 { margin-top: 25px; font-weight: 600; }
+              p { margin-bottom: 15px; }
 
-  .open-notebook-btn {
-      background-color: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
-      padding: 10px 18px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.95rem;
-      margin: 0 0 20px 0;
-  }
+              /* --- BUTTONS --- */
+              .button-container {
+                  display: flex;
+                  flex-direction: column; /* Stack vertically */
+                  gap: 12px;
+                  margin-bottom: 40px;
+                  border-bottom: 1px solid var(--vscode-widget-border);
+                  padding-bottom: 30px;
+              }
 
-  .open-notebook-btn:hover {
-      background-color: var(--vscode-button-hoverBackground);
-  }
+              .action-btn {
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  padding: 12px 20px;
+                  border: none;
+                  border-radius: 6px;
+                  font-size: 14px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  text-align: left;
+                  transition: transform 0.1s ease, background 0.2s;
+                  width: fit-content;
+                  min-width: 250px;
+              }
 
-  code {
-      background-color: var(--vscode-textBlockQuote-background);
-      padding: 2px 4px;
-      border-radius: 3px;
-      font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  }
+              .action-btn:active { transform: scale(0.98); }
 
-  pre {
-      background-color: var(--vscode-textBlockQuote-background);
-      padding: 10px;
-      border-radius: 4px;
-      overflow-x: auto;
-  }
-</style>
+              /* Primary Button (Notebook) - Blue */
+              .notebook-btn {
+                  background-color: var(--vscode-button-background);
+                  color: var(--vscode-button-foreground);
+              }
+              .notebook-btn:hover { background-color: var(--vscode-button-hoverBackground); }
 
+              /* Secondary Button (Dependencies) - Grey/Green tint */
+              .deps-btn {
+                  background-color: var(--vscode-button-secondaryBackground);
+                  color: var(--vscode-button-secondaryForeground);
+              }
+              .deps-btn:hover { background-color: var(--vscode-button-secondaryHoverBackground); }
+
+              .icon { font-size: 1.2em; }
+
+              /* --- CODE BLOCKS --- */
+              code {
+                  font-family: var(--vscode-editor-font-family, "Consolas", monospace);
+                  background-color: var(--vscode-textBlockQuote-background);
+                  padding: 2px 5px;
+                  border-radius: 4px;
+                  font-size: 0.9em;
+              }
+              
+              pre {
+                  background-color: var(--vscode-textBlockQuote-background);
+                  padding: 15px;
+                  border-radius: 8px;
+                  overflow-x: auto;
+              }
+
+              a { color: var(--vscode-textLink-foreground); text-decoration: none; }
+              a:hover { text-decoration: underline; }
+
+          </style>
       </head>
       <body>
-          <h1>${section.title}</h1>
-          ${depsButton}
-          ${notebookButton}
-          <hr>
-          ${markdownContent} 
+          
+          <div class="eyebrow">${eyebrow}</div>
+          <h1>${title}</h1>
+
+          <div class="button-container">
+             ${depsButton}
+             ${notebookButton}
+          </div>
+
+          <div class="content">
+              ${markdownContent} 
+          </div>
 
           <script nonce="${nonce}">
-    const vscode = acquireVsCodeApi();
+              const vscode = acquireVsCodeApi();
 
-    // Check Dependencies button
-    const depsBtn = document.getElementById('check-deps-btn');
-    if (depsBtn) {
-        depsBtn.addEventListener('click', () => {
-            vscode.postMessage({
-                command: 'checkDependencies'
-            });
-        });
-    }
+              // Setup Listeners
+              const depsBtn = document.getElementById('check-deps-btn');
+              if (depsBtn) {
+                  depsBtn.addEventListener('click', () => {
+                      vscode.postMessage({ command: 'checkDependencies' });
+                  });
+              }
 
-    // Open Notebook button
-    const nbBtn = document.querySelector('.open-notebook-btn[data-notebook]');
-    if (nbBtn) {
-        nbBtn.addEventListener('click', () => {
-            const notebookPath = nbBtn.getAttribute('data-notebook');
-            vscode.postMessage({
-                command: 'openNotebook',
-                notebook: notebookPath
-            });
-        });
-    }
-</script>
-
+              const nbBtn = document.querySelector('.notebook-btn');
+              if (nbBtn) {
+                  nbBtn.addEventListener('click', () => {
+                      const notebookPath = nbBtn.getAttribute('data-notebook');
+                      vscode.postMessage({
+                          command: 'openNotebook',
+                          notebook: notebookPath
+                      });
+                  });
+              }
+          </script>
       </body>
       </html>`;
   }
@@ -403,7 +445,6 @@ if (section.title === "1.1 Preparing your environment") {
   }
 }
 
-// Helper function to generate a random "nonce" for security
 function getNonce() {
   let text = '';
   const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
