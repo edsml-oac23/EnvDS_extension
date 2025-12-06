@@ -7,32 +7,39 @@ const MarkdownIt = require('markdown-it');
 // 1. EXTENSION ACTIVATION
 // -----------------------------------------------------------------------------
 export function activate(context: vscode.ExtensionContext) {
-  
-  // Register the Sidebar (A)
-  const courseOutlineProvider = new CourseOutlineProvider(context.extensionPath);
-  vscode.window.registerTreeDataProvider(
-    'eds-guide.courseOutlineView', // Must match package.json view ID
-    courseOutlineProvider
+
+  // LEFT SIDE: webview view
+  const sidebarProvider = new GuideSidebarProvider(context.extensionUri);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      GuideSidebarProvider.viewType,
+      sidebarProvider
+    )
   );
 
-  // Command: Open The Guide (B)
+  // Command used when sidebar asks to open a file
   context.subscriptions.push(
-    vscode.commands.registerCommand('eds-guide.openSection', (section) => {
-      SectionWebviewPanel.createOrShow(context.extensionUri, context.extensionPath, section);
+    vscode.commands.registerCommand('eds-guide.openStepFile', (file: string) => {
+      const root = vscode.workspace.workspaceFolders?.[0].uri;
+      if (!root) { return; }
+      const target = vscode.Uri.joinPath(root, file);
+      vscode.commands.executeCommand('vscode.open', target);
     })
   );
 
-  // Command: Check Dependencies (Triggered by Button in B)
+  // Command: Check Dependencies (same as before)
   context.subscriptions.push(
     vscode.commands.registerCommand('eds-guide.checkDependencies', () => {
       const terminalName = 'EDSML Setup';
       let terminal = vscode.window.terminals.find(t => t.name === terminalName);
       if (!terminal) terminal = vscode.window.createTerminal(terminalName);
-      
+
       terminal.show();
       terminal.sendText("echo 'EDSML: Synchronising environment...'");
       terminal.sendText("uv sync");
-      terminal.sendText("uv run python -c \"import leafmap; print('✅ OpenGeos Stack Ready!')\"");
+      terminal.sendText(
+        "uv run python -c \"import leafmap; print('✅ OpenGeos Stack Ready!')\""
+      );
     })
   );
 }
@@ -40,54 +47,146 @@ export function activate(context: vscode.ExtensionContext) {
 // -----------------------------------------------------------------------------
 // 2. SIDEBAR PROVIDER (Block A)
 // -----------------------------------------------------------------------------
-class CourseOutlineProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-  constructor(private extensionPath: string) {}
 
-  getTreeItem(element: vscode.TreeItem): vscode.TreeItem { return element; }
+class GuideSidebarProvider implements vscode.WebviewViewProvider {
+  public static readonly viewType = 'eds-guide.courseOutlineView';
 
-  getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
-    // 1. Find the Student's Repo (The Workspace)
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders) return Promise.resolve([]);
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+  constructor(private readonly extensionUri: vscode.Uri) {}
 
-    // 2. Top Level
-    if (!element) {
-      return Promise.resolve([
-        new SectionItem("Module Practicals", "Course content", vscode.TreeItemCollapsibleState.Expanded, "practicals"),
-      ]);
+  resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken
+  ) {
+    const webview = webviewView.webview;
+    webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this.extensionUri],
+    };
+
+    this.update(webview);
+
+    webview.onDidReceiveMessage(msg => {
+      if (msg.command === 'openStep') {
+        vscode.commands.executeCommand('eds-guide.openStepFile', msg.file);
+      } else if (msg.command === 'checkDependencies') {
+        vscode.commands.executeCommand('eds-guide.checkDependencies');
+      }
+    });
+  }
+
+  private update(webview: vscode.Webview) {
+    const workspace = vscode.workspace.workspaceFolders?.[0];
+    if (!workspace) {
+      webview.html = '<p>No workspace opened.</p>';
+      return;
     }
 
-    // 3. Read toc.json
-    if (element.id === "practicals") {
-      const tocPath = path.join(workspaceRoot, '.guide', 'toc.json');
-      if (!fs.existsSync(tocPath)) return Promise.resolve([]);
+    const tocPath = path.join(workspace.uri.fsPath, '.guide', 'toc.json');
+    if (!fs.existsSync(tocPath)) {
+      webview.html = '<p>No .guide/toc.json found.</p>';
+      return;
+    }
 
-      const toc = JSON.parse(fs.readFileSync(tocPath, 'utf8'));
-      let items: SectionItem[] = [];
+    const toc = JSON.parse(fs.readFileSync(tocPath, 'utf8'));
 
-      toc.categories.forEach((category: any) => {
-        // Create Category (e.g. "Week 1")
-        items.push(new SectionItem(category.title, "", vscode.TreeItemCollapsibleState.Expanded));
-
-        // Create Steps (e.g. "1.1 Setup")
-        category.steps.forEach((step: any) => {
-          const stepItem = new SectionItem(step.title, step.description, vscode.TreeItemCollapsibleState.None);
-          
-          // 🔴 IMPORTANT: Pass the Category Title (e.g. "Week 1") to the view
-          stepItem.command = {
-            command: 'eds-guide.openSection',
-            title: 'Open Section',
-            arguments: [{ ...step, categoryTitle: category.title }], 
-          };
-          items.push(stepItem);
-        });
+    let sectionsHtml = '';
+    toc.categories.forEach((category: any) => {
+      sectionsHtml += `
+        <div class="week">
+          <div class="week-title">${category.title}</div>
+      `;
+      category.steps.forEach((step: any) => {
+        sectionsHtml += `
+          <button class="step" onclick="openStep('${step.file}')">
+            <div class="step-main">${step.title}</div>
+            <div class="step-desc">${step.description ?? ''}</div>
+          </button>
+        `;
       });
-      return Promise.resolve(items);
+      sectionsHtml += `</div>`;
+    });
+
+    webview.html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EDS Guide</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 12px;
+      font-family: var(--vscode-font-family);
+      font-size: 13px;
+      color: var(--vscode-foreground);
+      background-color: var(--vscode-sideBar-background);
     }
-    return Promise.resolve([]);
+
+    .week {
+      margin-bottom: 18px;
+    }
+
+    .week-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      color: var(--vscode-sideBarSectionHeader-foreground);
+    }
+
+    .step {
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      margin-bottom: 4px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .step:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .step-main {
+      font-size: 13px;
+      font-weight: 700;          /* bigger + bold like B */
+    }
+
+    .step-desc {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+
+    /* Optional: a small blue pill like a button */
+    .step-main::before {
+      content: "●";
+      font-size: 8px;
+      margin-right: 6px;
+      color: var(--vscode-textLink-foreground);
+    }
+  </style>
+</head>
+<body>
+  ${sectionsHtml}
+
+  <script>
+    const vscode = acquireVsCodeApi();
+    function openStep(file) {
+      vscode.postMessage({ command: 'openStep', file });
+    }
+  </script>
+</body>
+</html>`;
   }
 }
+
+
 
 class SectionItem extends vscode.TreeItem {
   constructor(label: string, desc: string, state: vscode.TreeItemCollapsibleState, id?: string) {
