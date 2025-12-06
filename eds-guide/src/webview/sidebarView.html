@@ -10,90 +10,238 @@
       color: var(--vscode-foreground);
       background-color: var(--vscode-editor-background);
     }
+
     h1 {
       font-size: 1.6em;
       font-weight: 600;
-      margin: 0 0 20px 0;
+      margin: 0 0 16px 0;
       color: var(--vscode-titleBar-activeForeground);
     }
-    .session {
+
+    /* Detail card (like ml.school “1.1 Preparing your environment” box) */
+    .detail-card {
+      border-radius: 8px;
+      padding: 16px;
       margin-bottom: 24px;
+      background: var(--vscode-sideBar-dropBackground);
+      border: 1px solid var(--vscode-panel-border);
     }
-    .session-header {
-      font-size: 1.2em;
+
+    .detail-session {
+      font-size: 0.9em;
+      margin-bottom: 4px;
+      opacity: 0.8;
+    }
+
+    .detail-title {
+      font-size: 1.05em;
       font-weight: 600;
-      padding: 8px 0;
-      color: var(--vscode-foreground);
-      border-bottom: 1px solid var(--vscode-panel-border);
+      margin-bottom: 4px;
     }
-    .section {
-      margin: 12px 0;
-      padding-left: 8px;
+
+    .detail-description {
+      font-size: 0.9em;
+      margin-bottom: 12px;
+      opacity: 0.9;
     }
-    .section-title {
-      cursor: pointer;
-      padding: 6px 8px;
-      border-radius: 4px;
-      transition: background 0.2s;
+
+    .hidden {
+      display: none;
     }
-    .section-title:hover {
-      background: var(--vscode-list-hoverBackground);
-    }
+
     .highlight {
       background: var(--vscode-button-background);
       color: white;
-      padding: 10px 16px;
+      padding: 8px 14px;
       border: none;
       border-radius: 6px;
       cursor: pointer;
       font-weight: 500;
-      margin: 20px 0;
       display: inline-block;
     }
+
     .highlight:hover {
       background: var(--vscode-button-hoverBackground);
+    }
+
+    .session {
+      margin-bottom: 20px;
+    }
+
+    .session-header {
+      font-size: 1.1em;
+      font-weight: 600;
+      padding: 8px 0 4px 0;
+      color: var(--vscode-foreground);
+    }
+
+    .section {
+      margin: 4px 0;
+    }
+
+    .section-title {
+      cursor: pointer;
+      padding: 4px 0;
+      font-size: 0.95em;
+    }
+
+    .section-title.active {
+      font-weight: 600;
+    }
+
+    .section-subtitle {
+      font-size: 0.78em;
+      opacity: 0.7;
+      margin-left: 2px;
     }
   </style>
 </head>
 <body>
   <h1>Environmental Data Science Module</h1>
 
-  <button class="highlight" id="check-deps">Check Dependencies</button>
+  <!-- Detail card that appears when a step is clicked -->
+  <div id="detail-card" class="detail-card hidden">
+    <div id="detail-session" class="detail-session"></div>
+    <div id="detail-title" class="detail-title"></div>
+    <div id="detail-description" class="detail-description"></div>
+    <button id="detail-check" class="highlight">Check dependencies</button>
+  </div>
 
+  <!-- Week / Session list (no expand/collapse, same style as ml.school) -->
   <div class="session">
-    <div class="session-header">Session 1 - Introduction</div>
+    <div class="session-header">Week 1 – Climate & Time Series</div>
+
     <div class="section">
-      <div class="section-title" data-path="session1/intro.md">1.1. Preparing your environment</div>
-      <div class="section-title" data-path="session1/mlflow.md">1.2. Setting up MLflow</div>
-      <div class="section-title" data-path="session1/env-vars.md">1.3. Environment variables</div>
-      <div class="section-title" data-path="session1/eda.md">1.4. Exploratory data analysis</div>
-      <div class="section-title" data-path="session1/assignments.md">1.5. Assignments</div>
+      <div
+        class="section-title"
+        data-path="week1/1.1-setup.md"
+        data-session="Week 1 – Climate & Time Series"
+        data-description="Setting up your development environment and installing the required dependencies."
+        data-checkdeps="true"
+      >
+        1.1. Preparing your environment
+      </div>
+    </div>
+
+    <div class="section">
+      <div
+        class="section-title"
+        data-path="week1/1.2-climate-stac.md"
+        data-session="Week 1 – Climate & Time Series"
+        data-description="Accessing climate data through STAC APIs and loading cubes with Xarray."
+      >
+        1.2. Climate data via STAC
+      </div>
+    </div>
+
+    <div class="section">
+      <div
+        class="section-title"
+        data-path="week1/1.3-time-series-xarray.md"
+        data-session="Week 1 – Climate & Time Series"
+        data-description="Working with climate time series: resampling, anomalies, temporal aggregation."
+      >
+        1.3. Time series with Xarray
+      </div>
+    </div>
+
+    <div class="section">
+      <div
+        class="section-title"
+        data-path="week1/1.4-smart-vineyard.md"
+        data-session="Week 1 – Climate & Time Series"
+        data-description="Smart Vineyard mini-project combining SAM segmentation and climate signals."
+      >
+        1.4. Smart Vineyard project
+      </div>
     </div>
   </div>
 
   <div class="session">
-    <div class="session-header">Session 2 - Introduction to Metaflow</div>
+    <div class="session-header">Week 3 – Remote Sensing & GeoAI</div>
+
     <div class="section">
-      <div class="section-title" data-path="session2/artifacts.md">2.1. Metaflow artifacts</div>
-      <div class="section-title" data-path="session2/branches.md">2.2. Parallel branches</div>
-      <div class="section-title" data-path="session2/foreach.md">2.3. Foreach branches</div>
+      <div
+        class="section-title"
+        data-path="week3/3.1-foundation-eo.md"
+        data-session="Week 3 – Remote Sensing & GeoAI"
+        data-description="Foundation models in Earth Observation: SAM, CLIP and vision transformers."
+      >
+        3.1. Foundation models in EO
+      </div>
+    </div>
+
+    <div class="section">
+      <div
+        class="section-title"
+        data-path="week3/3.2-geoai-classification.md"
+        data-session="Week 3 – Remote Sensing & GeoAI"
+        data-description="From classical ML to GeoAI segmentation for land-cover classification."
+      >
+        3.2. GeoAI classification
+      </div>
+    </div>
+
+    <div class="section">
+      <div
+        class="section-title"
+        data-path="week3/3.4-nagasaki-change.md"
+        data-session="Week 3 – Remote Sensing & GeoAI"
+        data-description="Nagasaki change-detection project with pre- and post-event imagery."
+      >
+        3.3. Nagasaki change project
+      </div>
     </div>
   </div>
 
   <script>
     const vscode = acquireVsCodeApi();
 
-    document.getElementById('check-deps').onclick = () => {
-      vscode.postMessage({ command: 'checkDependencies' });
-    };
+    const detailCard = document.getElementById('detail-card');
+    const detailSession = document.getElementById('detail-session');
+    const detailTitle = document.getElementById('detail-title');
+    const detailDescription = document.getElementById('detail-description');
+    const detailCheck = document.getElementById('detail-check');
 
+    let activeSection = null;
+    let activeSectionPath = null;
+
+    function setActiveSection(el) {
+      if (activeSection) {
+        activeSection.classList.remove('active');
+      }
+      activeSection = el;
+      activeSection.classList.add('active');
+
+      const sessionText = el.getAttribute('data-session') || '';
+      const description = el.getAttribute('data-description') || '';
+      const showCheck = el.getAttribute('data-checkdeps') === 'true';
+
+      detailSession.textContent = sessionText;
+      detailTitle.textContent = el.textContent.trim();
+      detailDescription.textContent = description;
+
+      detailCheck.style.display = showCheck ? 'inline-block' : 'none';
+      detailCard.classList.remove('hidden');
+
+      activeSectionPath = el.getAttribute('data-path');
+    }
+
+    // Click on a section: update card + open markdown
     document.querySelectorAll('.section-title').forEach(el => {
-      el.onclick = () => {
+      el.addEventListener('click', () => {
+        setActiveSection(el);
+        const path = el.getAttribute('data-path');
         vscode.postMessage({
           command: 'openSection',
-          path: el.getAttribute('data-path')
+          path: path   // extension.ts already prefixes ".guide/"
         });
-      };
+      });
+    });
+
+    // Check dependencies button inside the card
+    detailCheck.addEventListener('click', () => {
+      vscode.postMessage({ command: 'checkDependencies' });
     });
   </script>
 </body>
