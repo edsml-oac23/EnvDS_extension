@@ -22,11 +22,7 @@
       background-color: var(--vscode-sideBarSectionHeader-background);
     }
 
-    /* --- The Module List --- */
-    .session {
-      margin-bottom: 0;
-    }
-
+    /* Session headers (Week 1, Week 3, etc.) */
     .session-header {
       font-size: 11px;
       font-weight: 700;
@@ -36,17 +32,16 @@
       margin-top: 10px;
     }
 
+    /* Each clickable section */
     .section {
-      position: relative; /* Context for the inline card */
-      border-bottom: 1px solid transparent;
+      position: relative; /* Critical: allows card to be inserted inside */
     }
 
-    /* BOLD and LARGER as requested */
     .section-title {
       cursor: pointer;
       padding: 10px 20px;
-      font-size: 14px;      /* Larger */
-      font-weight: 700;     /* Bold */
+      font-size: 14px;
+      font-weight: 700;
       display: flex;
       align-items: center;
       transition: background 0.2s;
@@ -59,17 +54,19 @@
     .section-title.active {
       background-color: var(--vscode-list-activeSelectionBackground);
       color: var(--vscode-list-activeSelectionForeground);
+      font-weight: 600;
     }
 
-    /* --- The Inline Detail Card --- */
-    /* This moves around the DOM to sit below the active item */
+    /* Reusable detail card (moves under active item) */
     .detail-card {
       background: var(--vscode-sideBar-dropBackground);
       border-top: 1px solid var(--vscode-panel-border);
       border-bottom: 1px solid var(--vscode-panel-border);
       padding: 15px 20px;
-      margin: 0; /* Flush with the list */
+      margin: 0 20px 10px 20px;
+      border-radius: 4px;
       animation: slideDown 0.2s ease-out;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
     .hidden {
@@ -83,7 +80,6 @@
       margin-bottom: 12px;
     }
 
-    /* The Blue Button */
     .highlight {
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
@@ -93,7 +89,7 @@
       cursor: pointer;
       font-weight: 600;
       font-size: 12px;
-      width: 100%; /* Full width for better mobile/narrow sidebar */
+      width: 100%;
       text-align: center;
     }
 
@@ -109,126 +105,70 @@
 </head>
 <body>
 
+  <!-- Single reusable card (moved dynamically) -->
   <div id="reusable-card" class="detail-card hidden">
     <div id="card-desc" class="detail-description"></div>
     <button id="card-btn" class="highlight hidden">Check Dependencies</button>
   </div>
 
-  <h1>Environmental Data Science</h1>
+  <h1>Environmental Data Science Module</h1>
 
-  <div class="session">
-    <div class="session-header">Week 1 – Climate & Time Series</div>
-
-    <div class="section">
-      <div class="section-title"
-        data-path="week1/1.1-setup.md"
-        data-desc="Setting up your development environment (uv, Docker) and installing OpenGeos libraries."
-        data-checkdeps="true">
-        1.1 Preparing your environment
-      </div>
-      </div>
-
-    <div class="section">
-      <div class="section-title"
-        data-path="week1/1.2-climate-stac.md"
-        data-desc="Accessing Sentinel-2 and Landsat data using PySTAC Client and converting to Xarray."
-        data-checkdeps="false">
-        1.2 Climate data via STAC
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title"
-        data-path="week1/1.3-time-series-xarray.md"
-        data-desc="Processing multi-dimensional raster data: resampling, anomalies, and temporal aggregation."
-        data-checkdeps="false">
-        1.3 Time series with Xarray
-      </div>
-    </div>
-    
-     <div class="section">
-      <div class="section-title"
-        data-path="week1/1.4-smart-vineyard.md"
-        data-desc="Mini-project: Combining climate data with vineyard boundaries."
-        data-checkdeps="false">
-        1.4 Smart Vineyard Project
-      </div>
-    </div>
-  </div>
-
-  <div class="session">
-    <div class="session-header">Week 3 – Remote Sensing & GeoAI</div>
-
-    <div class="section">
-      <div class="section-title"
-        data-path="week3/3.1-foundation-eo.md"
-        data-desc="Introduction to foundation models (SAM, CLIP) for Earth Observation."
-        data-checkdeps="false">
-        3.1 Foundation models in EO
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title"
-        data-path="week3/3.4-nagasaki-change.md"
-        data-desc="Detecting urban changes in Nagasaki using deep learning change detection."
-        data-checkdeps="false">
-        3.4 Nagasaki Change Project
-      </div>
-    </div>
-  </div>
+  <!-- TOC_PLACEHOLDER -->
+  <!-- ASSIGNMENTS_PLACEHOLDER -->
 
   <script>
     const vscode = acquireVsCodeApi();
 
-    // The single card element we will move around
     const card = document.getElementById('reusable-card');
     const cardDesc = document.getElementById('card-desc');
     const cardBtn = document.getElementById('card-btn');
 
-    // Handle Title Clicks
+    let activeTitle = null;
+
+    // Attach click handlers to all section titles (dynamically generated)
     document.querySelectorAll('.section-title').forEach(titleEl => {
       titleEl.addEventListener('click', () => {
-        
-        // 1. Visual Selection State
-        document.querySelectorAll('.section-title').forEach(el => el.classList.remove('active'));
+        // 1. Update active visual state
+        if (activeTitle) {
+          activeTitle.classList.remove('active');
+        }
         titleEl.classList.add('active');
+        activeTitle = titleEl;
 
-        // 2. Move the Card
-        // We append the card to the PARENT (.section) of the clicked title
-        // This ensures it sits directly below the title
-        const parentSection = titleEl.parentNode;
-        
-        // Update Content
-        cardDesc.textContent = titleEl.getAttribute('data-desc');
-        
-        // Show/Hide Button
+        // 2. Update card content
+        cardDesc.textContent = titleEl.getAttribute('data-desc') || 'No description available.';
+
         const showBtn = titleEl.getAttribute('data-checkdeps') === 'true';
-        if (showBtn) {
-            cardBtn.classList.remove('hidden');
-        } else {
-            cardBtn.classList.add('hidden');
+        cardBtn.classList.toggle('hidden', !showBtn);
+
+        // 3. Move card below this title
+        const parentSection = titleEl.closest('.section');
+
+        // Remove card from current location if it's already in DOM
+        if (card.parentNode) {
+          card.parentNode.removeChild(card);
         }
 
-        // Place and Reveal
+        // Insert card inside the clicked section
         parentSection.appendChild(card);
         card.classList.remove('hidden');
 
-        // 3. Send Message to VS Code to open the file
-        vscode.postMessage({
-          command: 'openGuide', // Must match 'case' in extension.ts
-          path: titleEl.getAttribute('data-path')
-        });
+        // 4. Open file/notebook
+        const mdPath = titleEl.getAttribute('data-path') || '';
+        const notebookPath = titleEl.getAttribute('data-notebook') || '';
 
+        vscode.postMessage({
+          command: 'openGuide',
+          path: mdPath,
+          notebook: notebookPath
+        });
       });
     });
 
-    // Handle Button Click
-    cardBtn.addEventListener('click', (e) => {
-        // Prevent bubbling if necessary, though it's separate from title
-        vscode.postMessage({ command: 'checkDependencies' });
+    // Button: trigger dependency check
+    cardBtn.addEventListener('click', () => {
+      vscode.postMessage({ command: 'checkDependencies' });
     });
-
   </script>
 </body>
 </html>
