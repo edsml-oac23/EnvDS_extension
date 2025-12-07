@@ -31,14 +31,13 @@ class EdsGuideSidebarProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = this.getHtmlContent();
 
     webviewView.webview.onDidReceiveMessage(message => {
+      // inside resolveWebviewView...
       switch (message.command) {
-        case 'checkDependencies':
-          vscode.commands.executeCommand('eds-guide.checkDependencies');
-          break;
-        case 'openSection':
-          const uri = vscode.Uri.joinPath(this.context.extensionUri, '.guide', message.path);
-          vscode.commands.executeCommand('markdown.showPreview', uri);
-          break;
+          case 'openGuide':  // Matches the HTML
+            await this.handleOpenGuide(message.path);
+            break;
+          // ...
+}
       }
     });
   }

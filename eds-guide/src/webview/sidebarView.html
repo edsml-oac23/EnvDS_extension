@@ -6,153 +6,152 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
-      padding: 16px;
+      padding: 0; 
       color: var(--vscode-foreground);
       background-color: var(--vscode-editor-background);
     }
 
     h1 {
-      font-size: 1.6em;
-      font-weight: 600;
-      margin: 0 0 16px 0;
-      color: var(--vscode-titleBar-activeForeground);
+      font-size: 11px;
+      font-weight: 700;
+      margin: 0;
+      padding: 15px 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--vscode-panel-border);
+      background-color: var(--vscode-sideBarSectionHeader-background);
     }
 
-    /* Detail card (like ml.school “1.1 Preparing your environment” box) */
+    /* --- The Module List --- */
+    .session {
+      margin-bottom: 0;
+    }
+
+    .session-header {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--vscode-descriptionForeground);
+      padding: 15px 20px 5px 20px;
+      margin-top: 10px;
+    }
+
+    .section {
+      position: relative; /* Context for the inline card */
+      border-bottom: 1px solid transparent;
+    }
+
+    /* BOLD and LARGER as requested */
+    .section-title {
+      cursor: pointer;
+      padding: 10px 20px;
+      font-size: 14px;      /* Larger */
+      font-weight: 700;     /* Bold */
+      display: flex;
+      align-items: center;
+      transition: background 0.2s;
+    }
+
+    .section-title:hover {
+      background-color: var(--vscode-list-hoverBackground);
+    }
+
+    .section-title.active {
+      background-color: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
+    }
+
+    /* --- The Inline Detail Card --- */
+    /* This moves around the DOM to sit below the active item */
     .detail-card {
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 24px;
       background: var(--vscode-sideBar-dropBackground);
-      border: 1px solid var(--vscode-panel-border);
-    }
-
-    .detail-session {
-      font-size: 0.9em;
-      margin-bottom: 4px;
-      opacity: 0.8;
-    }
-
-    .detail-title {
-      font-size: 1.05em;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .detail-description {
-      font-size: 0.9em;
-      margin-bottom: 12px;
-      opacity: 0.9;
+      border-top: 1px solid var(--vscode-panel-border);
+      border-bottom: 1px solid var(--vscode-panel-border);
+      padding: 15px 20px;
+      margin: 0; /* Flush with the list */
+      animation: slideDown 0.2s ease-out;
     }
 
     .hidden {
-      display: none;
+      display: none !important;
     }
 
+    .detail-description {
+      font-size: 13px;
+      line-height: 1.4;
+      opacity: 0.9;
+      margin-bottom: 12px;
+    }
+
+    /* The Blue Button */
     .highlight {
       background: var(--vscode-button-background);
-      color: white;
-      padding: 8px 14px;
+      color: var(--vscode-button-foreground);
+      padding: 6px 12px;
       border: none;
-      border-radius: 6px;
+      border-radius: 2px;
       cursor: pointer;
-      font-weight: 500;
-      display: inline-block;
+      font-weight: 600;
+      font-size: 12px;
+      width: 100%; /* Full width for better mobile/narrow sidebar */
+      text-align: center;
     }
 
     .highlight:hover {
       background: var(--vscode-button-hoverBackground);
     }
 
-    .session {
-      margin-bottom: 20px;
-    }
-
-    .session-header {
-      font-size: 1.1em;
-      font-weight: 600;
-      padding: 8px 0 4px 0;
-      color: var(--vscode-foreground);
-    }
-
-    .section {
-      margin: 4px 0;
-    }
-
-    .section-title {
-      cursor: pointer;
-      padding: 4px 0;
-      font-size: 0.95em;
-    }
-
-    .section-title.active {
-      font-weight: 600;
-    }
-
-    .section-subtitle {
-      font-size: 0.78em;
-      opacity: 0.7;
-      margin-left: 2px;
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
-  <h1>Environmental Data Science Module</h1>
 
-  <!-- Detail card that appears when a step is clicked -->
-  <div id="detail-card" class="detail-card hidden">
-    <div id="detail-session" class="detail-session"></div>
-    <div id="detail-title" class="detail-title"></div>
-    <div id="detail-description" class="detail-description"></div>
-    <button id="detail-check" class="highlight">Check dependencies</button>
+  <div id="reusable-card" class="detail-card hidden">
+    <div id="card-desc" class="detail-description"></div>
+    <button id="card-btn" class="highlight hidden">Check Dependencies</button>
   </div>
 
-  <!-- Week / Session list (no expand/collapse, same style as ml.school) -->
+  <h1>Environmental Data Science</h1>
+
   <div class="session">
     <div class="session-header">Week 1 – Climate & Time Series</div>
 
     <div class="section">
-      <div
-        class="section-title"
+      <div class="section-title"
         data-path="week1/1.1-setup.md"
-        data-session="Week 1 – Climate & Time Series"
-        data-description="Setting up your development environment and installing the required dependencies."
-        data-checkdeps="true"
-      >
-        1.1. Preparing your environment
+        data-desc="Setting up your development environment (uv, Docker) and installing OpenGeos libraries."
+        data-checkdeps="true">
+        1.1 Preparing your environment
       </div>
-    </div>
+      </div>
 
     <div class="section">
-      <div
-        class="section-title"
+      <div class="section-title"
         data-path="week1/1.2-climate-stac.md"
-        data-session="Week 1 – Climate & Time Series"
-        data-description="Accessing climate data through STAC APIs and loading cubes with Xarray."
-      >
-        1.2. Climate data via STAC
+        data-desc="Accessing Sentinel-2 and Landsat data using PySTAC Client and converting to Xarray."
+        data-checkdeps="false">
+        1.2 Climate data via STAC
       </div>
     </div>
 
     <div class="section">
-      <div
-        class="section-title"
+      <div class="section-title"
         data-path="week1/1.3-time-series-xarray.md"
-        data-session="Week 1 – Climate & Time Series"
-        data-description="Working with climate time series: resampling, anomalies, temporal aggregation."
-      >
-        1.3. Time series with Xarray
+        data-desc="Processing multi-dimensional raster data: resampling, anomalies, and temporal aggregation."
+        data-checkdeps="false">
+        1.3 Time series with Xarray
       </div>
     </div>
-
-    <div class="section">
-      <div
-        class="section-title"
+    
+     <div class="section">
+      <div class="section-title"
         data-path="week1/1.4-smart-vineyard.md"
-        data-session="Week 1 – Climate & Time Series"
-        data-description="Smart Vineyard mini-project combining SAM segmentation and climate signals."
-      >
-        1.4. Smart Vineyard project
+        data-desc="Mini-project: Combining climate data with vineyard boundaries."
+        data-checkdeps="false">
+        1.4 Smart Vineyard Project
       </div>
     </div>
   </div>
@@ -161,35 +160,20 @@
     <div class="session-header">Week 3 – Remote Sensing & GeoAI</div>
 
     <div class="section">
-      <div
-        class="section-title"
+      <div class="section-title"
         data-path="week3/3.1-foundation-eo.md"
-        data-session="Week 3 – Remote Sensing & GeoAI"
-        data-description="Foundation models in Earth Observation: SAM, CLIP and vision transformers."
-      >
-        3.1. Foundation models in EO
+        data-desc="Introduction to foundation models (SAM, CLIP) for Earth Observation."
+        data-checkdeps="false">
+        3.1 Foundation models in EO
       </div>
     </div>
 
     <div class="section">
-      <div
-        class="section-title"
-        data-path="week3/3.2-geoai-classification.md"
-        data-session="Week 3 – Remote Sensing & GeoAI"
-        data-description="From classical ML to GeoAI segmentation for land-cover classification."
-      >
-        3.2. GeoAI classification
-      </div>
-    </div>
-
-    <div class="section">
-      <div
-        class="section-title"
+      <div class="section-title"
         data-path="week3/3.4-nagasaki-change.md"
-        data-session="Week 3 – Remote Sensing & GeoAI"
-        data-description="Nagasaki change-detection project with pre- and post-event imagery."
-      >
-        3.3. Nagasaki change project
+        data-desc="Detecting urban changes in Nagasaki using deep learning change detection."
+        data-checkdeps="false">
+        3.4 Nagasaki Change Project
       </div>
     </div>
   </div>
@@ -197,52 +181,54 @@
   <script>
     const vscode = acquireVsCodeApi();
 
-    const detailCard = document.getElementById('detail-card');
-    const detailSession = document.getElementById('detail-session');
-    const detailTitle = document.getElementById('detail-title');
-    const detailDescription = document.getElementById('detail-description');
-    const detailCheck = document.getElementById('detail-check');
+    // The single card element we will move around
+    const card = document.getElementById('reusable-card');
+    const cardDesc = document.getElementById('card-desc');
+    const cardBtn = document.getElementById('card-btn');
 
-    let activeSection = null;
-    let activeSectionPath = null;
+    // Handle Title Clicks
+    document.querySelectorAll('.section-title').forEach(titleEl => {
+      titleEl.addEventListener('click', () => {
+        
+        // 1. Visual Selection State
+        document.querySelectorAll('.section-title').forEach(el => el.classList.remove('active'));
+        titleEl.classList.add('active');
 
-    function setActiveSection(el) {
-      if (activeSection) {
-        activeSection.classList.remove('active');
-      }
-      activeSection = el;
-      activeSection.classList.add('active');
+        // 2. Move the Card
+        // We append the card to the PARENT (.section) of the clicked title
+        // This ensures it sits directly below the title
+        const parentSection = titleEl.parentNode;
+        
+        // Update Content
+        cardDesc.textContent = titleEl.getAttribute('data-desc');
+        
+        // Show/Hide Button
+        const showBtn = titleEl.getAttribute('data-checkdeps') === 'true';
+        if (showBtn) {
+            cardBtn.classList.remove('hidden');
+        } else {
+            cardBtn.classList.add('hidden');
+        }
 
-      const sessionText = el.getAttribute('data-session') || '';
-      const description = el.getAttribute('data-description') || '';
-      const showCheck = el.getAttribute('data-checkdeps') === 'true';
+        // Place and Reveal
+        parentSection.appendChild(card);
+        card.classList.remove('hidden');
 
-      detailSession.textContent = sessionText;
-      detailTitle.textContent = el.textContent.trim();
-      detailDescription.textContent = description;
-
-      detailCheck.style.display = showCheck ? 'inline-block' : 'none';
-      detailCard.classList.remove('hidden');
-
-      activeSectionPath = el.getAttribute('data-path');
-    }
-
-    // Click on a section: update card + open markdown
-    document.querySelectorAll('.section-title').forEach(el => {
-      el.addEventListener('click', () => {
-        setActiveSection(el);
-        const path = el.getAttribute('data-path');
+        // 3. Send Message to VS Code to open the file
         vscode.postMessage({
-          command: 'openSection',
-          path: path   // extension.ts already prefixes ".guide/"
+          command: 'openGuide', // Must match 'case' in extension.ts
+          path: titleEl.getAttribute('data-path')
         });
+
       });
     });
 
-    // Check dependencies button inside the card
-    detailCheck.addEventListener('click', () => {
-      vscode.postMessage({ command: 'checkDependencies' });
+    // Handle Button Click
+    cardBtn.addEventListener('click', (e) => {
+        // Prevent bubbling if necessary, though it's separate from title
+        vscode.postMessage({ command: 'checkDependencies' });
     });
+
   </script>
 </body>
 </html>
