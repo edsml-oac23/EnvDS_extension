@@ -1,134 +1,20 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      margin: 0;
-      padding: 0; 
-      color: var(--vscode-foreground);
-      background-color: var(--vscode-editor-background);
-    }
+<script>
+  const vscode = acquireVsCodeApi();
 
-    h1 {
-      font-size: 11px;
-      font-weight: 700;
-      margin: 0;
-      padding: 15px 20px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid var(--vscode-panel-border);
-      background-color: var(--vscode-sideBarSectionHeader-background);
-    }
+  const card = document.getElementById('reusable-card');
+  const cardDesc = document.getElementById('card-desc');
+  const cardBtn = document.getElementById('card-btn');
 
-    /* Session headers (Week 1, Week 3, etc.) */
-    .session-header {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: var(--vscode-descriptionForeground);
-      padding: 15px 20px 5px 20px;
-      margin-top: 10px;
-    }
+  let activeTitle = null;
 
-    /* Each clickable section */
-    .section {
-      position: relative; /* Critical: allows card to be inserted inside */
-    }
-
-    .section-title {
-      cursor: pointer;
-      padding: 10px 20px;
-      font-size: 14px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      transition: background 0.2s;
-    }
-
-    .section-title:hover {
-      background-color: var(--vscode-list-hoverBackground);
-    }
-
-    .section-title.active {
-      background-color: var(--vscode-list-activeSelectionBackground);
-      color: var(--vscode-list-activeSelectionForeground);
-      font-weight: 600;
-    }
-
-    /* Reusable detail card (moves under active item) */
-    .detail-card {
-      background: var(--vscode-sideBar-dropBackground);
-      border-top: 1px solid var(--vscode-panel-border);
-      border-bottom: 1px solid var(--vscode-panel-border);
-      padding: 15px 20px;
-      margin: 0 20px 10px 20px;
-      border-radius: 4px;
-      animation: slideDown 0.2s ease-out;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .detail-description {
-      font-size: 13px;
-      line-height: 1.4;
-      opacity: 0.9;
-      margin-bottom: 12px;
-    }
-
-    .highlight {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      padding: 6px 12px;
-      border: none;
-      border-radius: 2px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 12px;
-      width: 100%;
-      text-align: center;
-    }
-
-    .highlight:hover {
-      background: var(--vscode-button-hoverBackground);
-    }
-
-    @keyframes slideDown {
-      from { opacity: 0; transform: translateY(-5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Single reusable card (moved dynamically) -->
-  <div id="reusable-card" class="detail-card hidden">
-    <div id="card-desc" class="detail-description"></div>
-    <button id="card-btn" class="highlight hidden">Check Dependencies</button>
-  </div>
-
-  <h1>Environmental Data Science Module</h1>
-
-  <!-- TOC_PLACEHOLDER -->
-  <!-- ASSIGNMENTS_PLACEHOLDER -->
-
-  <script>
-    const vscode = acquireVsCodeApi();
-
-    const card = document.getElementById('reusable-card');
-    const cardDesc = document.getElementById('card-desc');
-    const cardBtn = document.getElementById('card-btn');
-
-    let activeTitle = null;
-
-    // Attach click handlers to all section titles (dynamically generated)
+  // Function to attach click handlers (can be called multiple times)
+  function attachClickHandlers() {
     document.querySelectorAll('.section-title').forEach(titleEl => {
-      titleEl.addEventListener('click', () => {
-        // 1. Update active visual state
+      // Avoid attaching multiple times
+      titleEl.removeEventListener('click', titleEl._clickHandler);
+      
+      titleEl._clickHandler = () => {
+        // 1. Update active state
         if (activeTitle) {
           activeTitle.classList.remove('active');
         }
@@ -143,13 +29,11 @@
 
         // 3. Move card below this title
         const parentSection = titleEl.closest('.section');
-
-        // Remove card from current location if it's already in DOM
+        
         if (card.parentNode) {
           card.parentNode.removeChild(card);
         }
-
-        // Insert card inside the clicked section
+        
         parentSection.appendChild(card);
         card.classList.remove('hidden');
 
@@ -162,13 +46,25 @@
           path: mdPath,
           notebook: notebookPath
         });
-      });
-    });
+      };
 
-    // Button: trigger dependency check
-    cardBtn.addEventListener('click', () => {
-      vscode.postMessage({ command: 'checkDependencies' });
+      titleEl.addEventListener('click', titleEl._clickHandler);
     });
-  </script>
-</body>
-</html>
+  }
+
+  // Initial attach (in case content is static)
+  attachClickHandlers();
+
+  // Listen for message from extension when TOC is loaded
+  window.addEventListener('message', event => {
+    const message = event.data;
+    if (message.command === 'tocLoaded') {
+      attachClickHandlers();  // Re-attach to new dynamic elements
+    }
+  });
+
+  // Button: check dependencies
+  cardBtn.addEventListener('click', () => {
+    vscode.postMessage({ command: 'checkDependencies' });
+  });
+</script>
