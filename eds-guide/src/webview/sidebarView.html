@@ -1,70 +1,130 @@
-<script>
-  const vscode = acquireVsCodeApi();
-
-  const card = document.getElementById('reusable-card');
-  const cardDesc = document.getElementById('card-desc');
-  const cardBtn = document.getElementById('card-btn');
-
-  let activeTitle = null;
-
-  // Function to attach click handlers (can be called multiple times)
-  function attachClickHandlers() {
-    document.querySelectorAll('.section-title').forEach(titleEl => {
-      // Avoid attaching multiple times
-      titleEl.removeEventListener('click', titleEl._clickHandler);
-      
-      titleEl._clickHandler = () => {
-        // 1. Update active state
-        if (activeTitle) {
-          activeTitle.classList.remove('active');
-        }
-        titleEl.classList.add('active');
-        activeTitle = titleEl;
-
-        // 2. Update card content
-        cardDesc.textContent = titleEl.getAttribute('data-desc') || 'No description available.';
-
-        const showBtn = titleEl.getAttribute('data-checkdeps') === 'true';
-        cardBtn.classList.toggle('hidden', !showBtn);
-
-        // 3. Move card below this title
-        const parentSection = titleEl.closest('.section');
-        
-        if (card.parentNode) {
-          card.parentNode.removeChild(card);
-        }
-        
-        parentSection.appendChild(card);
-        card.classList.remove('hidden');
-
-        // 4. Open file/notebook
-        const mdPath = titleEl.getAttribute('data-path') || '';
-        const notebookPath = titleEl.getAttribute('data-notebook') || '';
-
-        vscode.postMessage({
-          command: 'openGuide',
-          path: mdPath,
-          notebook: notebookPath
-        });
-      };
-
-      titleEl.addEventListener('click', titleEl._clickHandler);
-    });
-  }
-
-  // Initial attach (in case content is static)
-  attachClickHandlers();
-
-  // Listen for message from extension when TOC is loaded
-  window.addEventListener('message', event => {
-    const message = event.data;
-    if (message.command === 'tocLoaded') {
-      attachClickHandlers();  // Re-attach to new dynamic elements
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: var(--vscode-font-family);
+      margin: 0;
+      padding: 0;
+      color: var(--vscode-foreground);
+      background-color: var(--vscode-editor-background);
     }
-  });
 
-  // Button: check dependencies
-  cardBtn.addEventListener('click', () => {
-    vscode.postMessage({ command: 'checkDependencies' });
-  });
-</script>
+    .session-header {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--vscode-descriptionForeground);
+      background-color: var(--vscode-sideBarSectionHeader-background);
+      padding: 10px 15px;
+      border-bottom: 1px solid var(--vscode-panel-border);
+    }
+
+    .section {
+      position: relative;
+      border-bottom: 1px solid var(--vscode-panel-border);
+    }
+
+    .section-title {
+      padding: 12px 15px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      transition: background 0.2s;
+    }
+
+    .section-title:hover {
+      background-color: var(--vscode-list-hoverBackground);
+    }
+
+    .section-title.active {
+      background-color: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
+      border-left: 4px solid var(--vscode-progressBar-background);
+    }
+
+    .detail-card {
+      background-color: var(--vscode-sideBar-dropBackground);
+      padding: 15px;
+      border-top: 1px solid var(--vscode-panel-border);
+      animation: slideDown 0.2s ease-out;
+    }
+
+    .detail-description {
+      font-size: 13px;
+      opacity: 0.9;
+      margin-bottom: 15px;
+      line-height: 1.4;
+    }
+
+    .highlight-btn {
+      background-color: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border: none;
+      padding: 8px 12px;
+      width: 100%;
+      cursor: pointer;
+      font-weight: 600;
+      border-radius: 2px;
+    }
+
+    .highlight-btn:hover {
+      background-color: var(--vscode-button-hoverBackground);
+    }
+
+    .hidden { display: none !important; }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="reusable-card" class="detail-card hidden">
+    <div id="card-desc" class="detail-description"></div>
+    <button id="card-btn" class="highlight-btn hidden">Check Dependencies</button>
+  </div>
+
+  <div id="course-content"></div>
+
+  <script>
+    const vscode = acquireVsCodeApi();
+    const card = document.getElementById('reusable-card');
+    const cardDesc = document.getElementById('card-desc');
+    const cardBtn = document.getElementById('card-btn');
+    let activeEl = null;
+
+    document.getElementById('course-content').addEventListener('click', (e) => {
+      const titleEl = e.target.closest('.section-title');
+      if (!titleEl) return;
+
+      if (activeEl) activeEl.classList.remove('active');
+      titleEl.classList.add('active');
+      activeEl = titleEl;
+
+      cardDesc.textContent = titleEl.getAttribute('data-desc') || '';
+
+      const checkDeps = titleEl.getAttribute('data-checkdeps') === 'true';
+      cardBtn.classList.toggle('hidden', !checkDeps);
+
+      const parent = titleEl.closest('.section');
+      if (card.parentNode) card.parentNode.removeChild(card);
+      parent.appendChild(card);
+      card.classList.remove('hidden');
+
+      vscode.postMessage({
+        command: 'openGuide',
+        path: titleEl.getAttribute('data-path') || '',
+        notebook: titleEl.getAttribute('data-notebook') || ''
+      });
+    });
+
+    cardBtn.addEventListener('click', () => {
+      vscode.postMessage({ command: 'checkDependencies' });
+    });
+  </script>
+</body>
+</html>
