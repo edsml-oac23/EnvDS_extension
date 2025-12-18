@@ -11,12 +11,30 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // IMPROVED "Check Dependencies" command
   context.subscriptions.push(
     vscode.commands.registerCommand('eds-guide.checkDependencies', () => {
-      vscode.commands.executeCommand('workbench.action.terminal.focus');
-      vscode.commands.executeCommand('workbench.action.terminal.sendSequence', {
-        text: 'uv --version && just --version && docker ps\n'
+      const terminal = vscode.window.createTerminal({
+        name: 'EDS Environment Check',
+        cwd: vscode.workspace.workspaceFolders?.[0].uri.fsPath
       });
+      terminal.show();
+      terminal.sendText(`
+echo "EDSML Geospatial Environment"
+echo ""
+echo "Tools"
+python --version
+uv --version
+just --version
+echo ""
+echo "Core geospatial packages:"
+mamba list --quiet | grep -E "geospatial|segment-geospatial|geoai-py|leafmap|rioxarray|xarray-spatial" | awk '{printf "   %-20s %s\n", $1, $2}'
+echo ""
+echo "Common problematic packages (now compatible thanks to geospatial meta-package):"
+mamba list --quiet | grep -E "gdal|fiona|shapely|pyproj|rasterio|proj|geos|click-plugins|cligj" | awk '{printf "   %-20s %s\n", $1, $2}'
+echo ""
+echo "All set!. You can now continue with practicals"
+`);
     })
   );
 
@@ -57,107 +75,117 @@ class EdsGuideSidebarProvider implements vscode.WebviewViewProvider {
 
   private getHtmlContentSync(): string {
     const htmlPath = path.join(this.context.extensionPath, 'src', 'webview', 'sidebarView.html');
-
     if (!fs.existsSync(htmlPath)) {
       return `<h3>Error: sidebarView.html not found in extension.</h3>`;
     }
-
     let html = fs.readFileSync(htmlPath, 'utf8');
     const tocContent = this.generateTocContentSync();
-
-    // Insert generated TOC into the #course-content div
     html = html.replace(
       '<div id="course-content"></div>',
       `<div id="course-content">${tocContent}</div>`
     );
-
     return html;
   }
 
   private generateTocContentSync(): string {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-
-    if (!workspaceFolders) {
-      return `<div style="padding:15px">Please open the <b>EnvDataScience-guide</b> repository.</div>`;
-    }
-
-    const tocPath = path.join(workspaceFolders[0].uri.fsPath, '.guide', 'toc.json');
-
-    if (!fs.existsSync(tocPath)) {
-      return `<div style="padding:15px; color:#f88">Missing: <b>.guide/toc.json</b> not found in workspace.</div>`;
-    }
-
-    try {
-      const tocData = fs.readFileSync(tocPath, 'utf8');
-      const tocJson = JSON.parse(tocData);
-      let content = '';
-
-      if (Array.isArray(tocJson.categories)) {
-        tocJson.categories.forEach((category: any) => {
-          content += `
-            <div class="session">
-              <div class="session-header">${this.escapeHtml(category.title || 'Untitled')}</div>`;
-
-          if (Array.isArray(category.steps)) {
-            category.steps.forEach((step: any) => {
-              const checkDeps = step.checkdeps === true ? 'true' : 'false';
-              const notebookAttr = step.notebook ? `data-notebook="${step.notebook}"` : '';
-
-              content += `
-                <div class="section">
-                  <div class="section-title"
-                    data-path="${step.file || ''}"
-                    data-desc="${this.escapeHtml(step.description || '')}"
-                    data-checkdeps="${checkDeps}"
-                    ${notebookAttr}>
-                    ${this.escapeHtml(step.title || 'Untitled Step')}
-                  </div>
-                </div>`;
-            });
-          }
-
-          content += `</div>`;
-        });
-      } else {
-        content = `<div style="padding:15px">Invalid toc.json format: missing 'categories' array.</div>`;
-      }
-
-      return content;
-    } catch (err) {
-      return `<div style="padding:15px; color:#f88">Error loading toc.json: ${(err as Error).message}</div>`;
-    }
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders) {
+    return `<div style="padding:15px">Please open the <b>EnvDataScience-guide</b> repository.</div>`;
   }
+
+  const tocPath = path.join(workspaceFolders[0].uri.fsPath, '.guide', 'toc.json');
+  if (!fs.existsSync(tocPath)) {
+    return `<div style="padding:15px; color:#f88">Missing: <b>.guide/toc.json</b> not found in workspace.</div>`;
+  }
+
+  try {
+    const tocData = fs.readFileSync(tocPath, 'utf8');
+    const tocJson = JSON.parse(tocData);
+    let content = '';
+
+    // ml.school format: top-level array
+    const modules = Array.isArray(tocJson) ? tocJson : [];
+
+    if (modules.length === 0) {
+      return `<div style="padding:15px">Invalid toc.json format.</div>`;
+    }
+
+    modules.forEach((module: any) => {
+      const weekTitle = module.label || 'Untitled Week';
+      const introPath = module.markdown || '';
+      const lessons = module.lessons || [];
+
+      // Week header — bold, larger, clickable to open intro.md
+      content += `
+        <div class="session">
+          <div class="section-title" style="font-weight: bold; font-size: 1.2em; padding: 14px 15px; background-color: var(--vscode-sideBarSectionHeader-background);"
+            data-path="${introPath}"
+            data-desc="${this.escapeHtml(module.description || '')}"
+            data-checkdeps="false">
+            ${this.escapeHtml(weekTitle)}
+          </div>`;
+
+      // Lessons indented under the week
+      lessons.forEach((lesson: any) => {
+        const lessonTitle = lesson.label || 'Untitled Lesson';
+        const lessonMd = lesson.markdown || '';
+        const notebookPath = lesson.notebook || '';
+        const hasCheckDeps = lesson.actions?.some((a: any) => a.command === 'eds-guide.checkDependencies') || false;
+
+        content += `
+          <div class="section" style="margin-left: 20px;">
+            <div class="section-title"
+              data-path="${lessonMd}"
+              data-desc="${this.escapeHtml(lesson.description || '')}"
+              data-checkdeps="${hasCheckDeps ? 'true' : 'false'}"
+              ${notebookPath ? `data-notebook="${notebookPath}"` : ''}>
+              ${this.escapeHtml(lessonTitle)}
+            </div>
+          </div>`;
+      });
+
+      content += `</div>`;
+    });
+
+    return content;
+  } catch (err) {
+    return `<div style="padding:15px; color:#f88">Error loading toc.json: ${(err as Error).message}</div>`;
+  }
+}
 
   private async handleOpenGuide(mdPath: string, notebookPath?: string) {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders) return;
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders) return;
+  const rootUri = workspaceFolders[0].uri;
 
-    const rootUri = workspaceFolders[0].uri;
+  // Close previous editors to keep the view clean
+  await vscode.commands.executeCommand('workbench.action.closeEditorsInGroup');
 
-    if (notebookPath && notebookPath.trim()) {
-      const nbUri = vscode.Uri.joinPath(rootUri, notebookPath);
-      try {
-        await vscode.commands.executeCommand('vscode.open', nbUri);
-        return;
-      } catch {
-        // Fall through to markdown
-      }
-    }
-
-    if (mdPath && mdPath.trim()) {
-      const mdUri = vscode.Uri.joinPath(rootUri, mdPath);
-      await vscode.commands.executeCommand('markdown.showPreviewToSide', mdUri);
-    }
+  // Prefer notebook if present
+  if (notebookPath && notebookPath.trim()) {
+    const nbUri = vscode.Uri.joinPath(rootUri, notebookPath);
+    await vscode.commands.executeCommand('vscode.open', nbUri, {
+      viewColumn: vscode.ViewColumn.Active,
+      preview: false
+    });
+    return;
   }
 
-  private escapeHtml(text: string): string {
-  const map: { [key: string]: string } = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  };
-  return text.replace(/[&<>"']/g, (m) => map[m]);
+  // Open markdown in rendered preview (ml.school way)
+  if (mdPath && mdPath.trim()) {
+    const mdUri = vscode.Uri.joinPath(rootUri, mdPath);
+    await vscode.commands.executeCommand('markdown.showPreview', mdUri);
+  }
 }
+
+  private escapeHtml(text: string): string {
+    const map: { [key: string]: string } = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    };
+    return text.replace(/[&<>"']/g, (m) => map[m]);
+  }
 }
