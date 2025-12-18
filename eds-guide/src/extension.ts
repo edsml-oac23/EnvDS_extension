@@ -20,8 +20,8 @@ export function activate(context: vscode.ExtensionContext) {
     });
     terminal.show();
     terminal.sendText(`
-uv --version | cut -d' ' -f2 | sed 's/^/uv: /'
-just --version | sed 's/just: /just: /'
+uv --version | awk '{print "uv: " $2}'
+just --version
 mamba list --quiet geospatial | tail -1 | awk '{print "geospatial: " $2}'
 mamba list --quiet segment-geospatial | tail -1 | awk '{print "segment-geospatial: " $2}'
 mamba list --quiet geoai-py | tail -1 | awk '{print "geoai-py: " $2}'
@@ -96,15 +96,19 @@ class EdsGuideSidebarProvider implements vscode.WebviewViewProvider {
 
     const modules = Array.isArray(tocJson) ? tocJson : [];
 
+    if (modules.length === 0) {
+      return `<div style="padding:15px">Invalid toc.json format.</div>`;
+    }
+
     modules.forEach((module: any) => {
       const weekTitle = module.label || 'Untitled Week';
       const introPath = module.markdown || '';
       const lessons = module.lessons || [];
 
-      // Clickable week header that opens intro.md
+      // Week header — bold, larger, clickable to open intro.md
       content += `
         <div class="session">
-          <div class="section-title" style="font-weight: bold; font-size: 1.2em; padding: 14px 15px; background-color: var(--vscode-sideBarSectionHeader-background);"
+          <div class="section-title" style="font-weight: bold; font-size: 1.2em; padding: 14px 15px; background-color: var(--vscode-sideBarSectionHeader-background); cursor: pointer;"
             data-path="${introPath}"
             data-desc="${this.escapeHtml(module.description || '')}"
             data-checkdeps="false">
