@@ -13,30 +13,21 @@ export function activate(context: vscode.ExtensionContext) {
 
   // IMPROVED "Check Dependencies" command
   context.subscriptions.push(
-    vscode.commands.registerCommand('eds-guide.checkDependencies', () => {
-      const terminal = vscode.window.createTerminal({
-        name: 'EDS Environment Check',
-        cwd: vscode.workspace.workspaceFolders?.[0].uri.fsPath
-      });
-      terminal.show();
-      terminal.sendText(`
-echo "EDSML Geospatial Environment"
-echo ""
-echo "Tools"
-python --version
-uv --version
-just --version
-echo ""
-echo "Core geospatial packages:"
-mamba list --quiet | grep -E "geospatial|segment-geospatial|geoai-py|leafmap|rioxarray|xarray-spatial" | awk '{printf "   %-20s %s\n", $1, $2}'
-echo ""
-echo "Common problematic packages (now compatible thanks to geospatial meta-package):"
-mamba list --quiet | grep -E "gdal|fiona|shapely|pyproj|rasterio|proj|geos|click-plugins|cligj" | awk '{printf "   %-20s %s\n", $1, $2}'
-echo ""
-echo "All set!. You can now continue with practicals"
-`);
-    })
-  );
+  vscode.commands.registerCommand('eds-guide.checkDependencies', () => {
+    const terminal = vscode.window.createTerminal({
+      name: 'EDS Environment Check',
+      cwd: vscode.workspace.workspaceFolders?.[0].uri.fsPath
+    });
+    terminal.show();
+    terminal.sendText(`
+uv --version | cut -d' ' -f2 | sed 's/^/uv: /'
+just --version | sed 's/just: /just: /'
+mamba list --quiet geospatial | tail -1 | awk '{print "geospatial: " $2}'
+mamba list --quiet segment-geospatial | tail -1 | awk '{print "segment-geospatial: " $2}'
+mamba list --quiet geoai-py | tail -1 | awk '{print "geoai-py: " $2}'
+    `);
+  })
+);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('eds-guide.refreshGuide', () => {
@@ -103,19 +94,14 @@ class EdsGuideSidebarProvider implements vscode.WebviewViewProvider {
     const tocJson = JSON.parse(tocData);
     let content = '';
 
-    // ml.school format: top-level array
     const modules = Array.isArray(tocJson) ? tocJson : [];
-
-    if (modules.length === 0) {
-      return `<div style="padding:15px">Invalid toc.json format.</div>`;
-    }
 
     modules.forEach((module: any) => {
       const weekTitle = module.label || 'Untitled Week';
       const introPath = module.markdown || '';
       const lessons = module.lessons || [];
 
-      // Week header — bold, larger, clickable to open intro.md
+      // Clickable week header that opens intro.md
       content += `
         <div class="session">
           <div class="section-title" style="font-weight: bold; font-size: 1.2em; padding: 14px 15px; background-color: var(--vscode-sideBarSectionHeader-background);"
@@ -125,7 +111,7 @@ class EdsGuideSidebarProvider implements vscode.WebviewViewProvider {
             ${this.escapeHtml(weekTitle)}
           </div>`;
 
-      // Lessons indented under the week
+      // Indented lessons
       lessons.forEach((lesson: any) => {
         const lessonTitle = lesson.label || 'Untitled Lesson';
         const lessonMd = lesson.markdown || '';
@@ -171,7 +157,7 @@ class EdsGuideSidebarProvider implements vscode.WebviewViewProvider {
     return;
   }
 
-  // Open markdown in rendered preview (ml.school way)
+  // Open markdown in rendered preview 
   if (mdPath && mdPath.trim()) {
     const mdUri = vscode.Uri.joinPath(rootUri, mdPath);
     await vscode.commands.executeCommand('markdown.showPreview', mdUri);
