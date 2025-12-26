@@ -18,16 +18,22 @@ export function activate(context: vscode.ExtensionContext) {
       name: 'EDS Environment Check',
       cwd: vscode.workspace.workspaceFolders?.[0].uri.fsPath
     });
+
     terminal.show();
-    terminal.sendText(`
-uv --version | awk '{print "uv: " $2}'
-just --version
-mamba list --quiet geospatial | tail -1 | awk '{print "geospatial: " $2}'
-mamba list --quiet segment-geospatial | tail -1 | awk '{print "segment-geospatial: " $2}'
-mamba list --quiet geoai-py | tail -1 | awk '{print "geoai-py: " $2}'
-    `);
+
+    terminal.sendText(
+  `bash -lc 'clear; printf "%s\n" \
+"uv: $(uv --version | awk "{print \\$2}")" \
+"just: $(just --version | awk "{print \\$2}")" \
+"geospatial: $(mamba list --quiet geospatial 2>/dev/null | tail -n 1 | awk "{print \\$2}")" \
+"segment-geospatial: $(mamba list --quiet segment-geospatial 2>/dev/null | tail -n 1 | awk "{print \\$2}")" \
+"geoai-py: $(mamba list --quiet geoai-py 2>/dev/null | tail -n 1 | awk "{print \\$2}")"'
+`
+);
+
   })
 );
+
 
   context.subscriptions.push(
     vscode.commands.registerCommand('eds-guide.refreshGuide', () => {
